@@ -46,6 +46,7 @@ resource "google_project_iam_member" "github_actions_roles" {
     "roles/artifactregistry.writer",
     "roles/iam.serviceAccountUser",
     "roles/storage.admin",
+    "roles/serviceusage.serviceUsageViewer",
   ])
 
   project = var.gcp_project_id
