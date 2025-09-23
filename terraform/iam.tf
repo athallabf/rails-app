@@ -43,10 +43,10 @@ resource "google_service_account" "github_actions_sa" {
 resource "google_project_iam_member" "github_actions_roles" {
   for_each = toset([
     "roles/run.admin",
+    "roles/viewer",
     "roles/artifactregistry.writer",
     "roles/iam.serviceAccountUser",
     "roles/storage.admin",
-    "roles/serviceusage.serviceUsageViewer",
   ])
 
   project = var.gcp_project_id
