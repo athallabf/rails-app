@@ -47,7 +47,7 @@ resource "google_cloud_run_v2_service" "main" {
     }
 
     containers {
-      image = var.docker_image_url != "" ? var.docker_image_url : "gcr.io/cloudrun/hello"
+      image = var.docker_image_url
       ports {
         container_port = var.container_port
       }
