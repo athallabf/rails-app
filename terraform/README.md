@@ -154,6 +154,7 @@ The final step is to provide the CI/CD pipeline with the necessary credentials b
 | `GCP_PROJECT_ID`                 | The ID of your GCP project (e.g., `devops-469009`).                                   |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | The full name of the provider from the `workload_identity_provider` Terraform output. |
 | `GCP_SERVICE_ACCOUNT`            | The email address from the `github_actions_sa_email` Terraform output.                |
+| `RAILS_MASTER_KEY`                | Rails encryption key for credentials                                                  |
 
 ## Day-to-Day Infrastructure Management
 
