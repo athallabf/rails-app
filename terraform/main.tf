@@ -57,6 +57,10 @@ resource "google_cloud_run_v2_service" "main" {
           cpu    = "1"
         }
       }
+      env {
+        name  = "RAILS_MASTER_KEY"
+        value = var.rails_master_key
+      }
     }
     service_account = google_service_account.cloud_run_sa.email
 

@@ -23,9 +23,14 @@ variable "docker_image_url" {
 variable "container_port" {
   type        = number
   description = "The port the container listens on."
-  default     = 8080
+  default     = 80
 }
 
+variable "rails_master_key" {
+  type        = string
+  description = "The Rails master key for decrypting credentials."
+  sensitive   = true
+}
 
 variable "github_repo" {
   type        = string

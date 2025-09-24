@@ -42,7 +42,6 @@ jobs:
     permissions:
       contents: "read"
       id-token: "write"
-    # We no longer use 'outputs' for this job.
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -101,8 +100,8 @@ jobs:
         working-directory: ./terraform
         env:
           TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          # This now uses the value read from the artifact file
           TF_VAR_docker_image_url: ${{ steps.image_url_reader.outputs.image_url }}
+          TF_VAR_rails_master_key: ${{ secrets.RAILS_MASTER_KEY }}
         run: |
           terraform init
           terraform apply -auto-approve
