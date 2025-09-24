@@ -79,7 +79,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Download Image URL Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: image-url-artifact
       - name: Read Image URL from Artifact
