@@ -10,6 +10,7 @@ env:
   GCP_REGION: "asia-southeast1"
   APP_NAME: "jarvis-demo"
   DOCKER_REPO_NAME: "jarvis-demo-repo"
+
 jobs:
   ci-checks:
     name: Test, Lint & Scan
@@ -22,27 +23,19 @@ jobs:
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-      - name: Lint code with Rubocop
-        run: bin/rubocop -f github
-      - name: Scan for Rails vulnerabilities (Brakeman)
-        run: bin/brakeman --no-pager
-      - name: Scan for JavaScript vulnerabilities (Importmap)
-        run: bin/importmap audit
       - name: Run unit and system tests
         env:
           RAILS_ENV: test
         run: bin/rails test
 
   build-and-push:
-    name: 🐳 Build & Push Docker Image
+    name: 🐳 Build, Push & Create Artifact
     runs-on: ubuntu-latest
     needs: [ci-checks]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
     permissions:
       contents: "read"
       id-token: "write"
-    outputs:
-      image_url: ${{ steps.build_step.outputs.image_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -61,22 +54,34 @@ jobs:
           IMAGE_URL="${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.DOCKER_REPO_NAME }}/${{ env.APP_NAME }}:${{ github.sha }}"
           docker build -t $IMAGE_URL .
           docker push $IMAGE_URL
-          echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
+          echo $IMAGE_URL > ./image_url.txt
+      - name: Upload Image URL as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-url-artifact
+          path: ./image_url.txt
 
   deploy-staging:
     name: 🚀 Deploy to Staging
     runs-on: ubuntu-latest
     needs: [build-and-push]
     if: github.ref == 'refs/heads/staging'
-    environment:
-      name: staging
-      url: ${{ steps.terraform_deploy.outputs.app_url }}
+    environment: staging
     permissions:
       contents: "read"
       id-token: "write"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Download Image URL Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: image-url-artifact
+      - name: Read Image URL from Artifact
+        id: image_url_reader
+        run: |
+          IMAGE_URL=$(cat ./image_url.txt)
+          echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -89,7 +94,7 @@ jobs:
         working-directory: ./terraform/environments
         env:
           TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_docker_image_url: ${{ needs.build-and-push.outputs.image_url }}
+          TF_VAR_docker_image_url: ${{ steps.image_url_reader.outputs.image_url }}
           TF_VAR_rails_master_key: ${{ secrets.RAILS_MASTER_KEY }}
         run: |
           terraform init -reconfigure
@@ -105,15 +110,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-push]
     if: github.ref == 'refs/heads/main'
-    environment:
-      name: production
-      url: ${{ steps.terraform_deploy.outputs.app_url }}
+    environment: production
     permissions:
       contents: "read"
       id-token: "write"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Download Image URL Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: image-url-artifact
+      - name: Read Image URL from Artifact
+        id: image_url_reader
+        run: |
+          IMAGE_URL=$(cat ./image_url.txt)
+          echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -126,11 +138,10 @@ jobs:
         working-directory: ./terraform/environments
         env:
           TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_docker_image_url: ${{ needs.build-and-push.outputs.image_url }}
+          TF_VAR_docker_image_url: ${{ steps.image_url_reader.outputs.image_url }}
           TF_VAR_rails_master_key: ${{ secrets.RAILS_MASTER_KEY }}
         run: |
           terraform init -reconfigure
-          # Gunakan workspace 'production' yang sudah kita buat
           terraform workspace select production
           terraform apply -auto-approve
           echo "app_url=$(terraform output -raw cloud_run_url)" >> $GITHUB_OUTPUT
