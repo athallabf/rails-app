@@ -1,9 +1,46 @@
-resource "google_cloud_run_v2_service_iam_member" "unauthenticated" {
-  name   = google_cloud_run_v2_service.main.name
-  role   = "roles/run.invoker"
-  member = "allUsers"
+provider "google" {
+  project = var.gcp_project_id
+  region  = var.gcp_region
 }
 
+resource "google_storage_bucket" "tfstate" {
+  project       = var.gcp_project_id
+  name          = "devops-469009-asia-southeast1-tfstate"
+  location      = var.gcp_region
+  storage_class = "STANDARD"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  versioning {
+    enabled = true
+  }
+}
+
+resource "google_project_service" "apis" {
+  for_each = toset([
+    "run.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "iam.googleapis.com",
+    "secretmanager.googleapis.com",
+  ])
+
+  service                    = each.key
+  disable_dependent_services = false
+}
+
+resource "google_artifact_registry_repository" "docker_repo" {
+  location      = var.gcp_region
+  repository_id = "${var.app_name}-repo"
+  description   = "Docker repository for ${var.app_name}"
+  format        = "DOCKER"
+  depends_on    = [google_project_service.apis]
+}
+
+
+// Dari iam.tf (Workload Identity Federation & Deployer SA)
 resource "google_iam_workload_identity_pool" "github_pool" {
   workload_identity_pool_id = "${var.app_name}-pool"
   display_name              = "Identity Pool for ${var.app_name}"
@@ -14,24 +51,21 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
   workload_identity_pool_provider_id = "github-provider"
   display_name                       = "GitHub Actions Provider"
-  description                        = "OIDC provider for the main branch"
+  description                        = "OIDC provider for main and staging branches"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
   }
 
   attribute_mapping = {
-    "google.subject"             = "assertion.sub"
-    "attribute.actor"            = "assertion.actor"
-    "attribute.repository"       = "assertion.repository"
-    "attribute.repository_owner" = "assertion.repository_owner"
-    "attribute.ref"              = "assertion.ref"
+    "google.subject"             = "assertion.sub",
+    "attribute.actor"            = "assertion.actor",
+    "attribute.repository"       = "assertion.repository",
+    "attribute.repository_owner" = "assertion.repository_owner",
+    "attribute.ref"              = "assertion.ref",
   }
 
-  # Security condition to only allow specific repository and main branch
-  attribute_condition = "attribute.repository == '${var.github_repo}' && attribute.ref == 'refs/heads/main'"
-
-
+  attribute_condition = "attribute.repository == '${var.github_repo}' && (attribute.ref == 'refs/heads/main' || attribute.ref == 'refs/heads/staging')"
 }
 
 resource "google_service_account" "github_actions_sa" {
@@ -59,5 +93,3 @@ resource "google_service_account_iam_member" "github_actions_wif_user" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${var.github_repo}"
 }
-
-
