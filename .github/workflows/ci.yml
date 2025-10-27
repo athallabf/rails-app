@@ -56,7 +56,7 @@ jobs:
           docker push $IMAGE_URL
           echo $IMAGE_URL > ./image_url.txt
       - name: Upload Image URL as Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: image-url-artifact
           path: ./image_url.txt
