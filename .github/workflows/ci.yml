@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Ruby and cache gems
         uses: ruby/setup-ruby@v1
         with:
@@ -38,7 +38,7 @@ jobs:
       id-token: "write"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -72,7 +72,7 @@ jobs:
       id-token: "write"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Download Image URL Artifact
         uses: actions/download-artifact@v4
         with:
@@ -116,7 +116,7 @@ jobs:
       id-token: "write"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Download Image URL Artifact
         uses: actions/download-artifact@v4
         with:
